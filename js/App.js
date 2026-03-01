@@ -32,6 +32,14 @@ class App {
         this.similarityRange = document.getElementById('similarityRange');
         this.similarityValue = document.getElementById('similarityValue');
         this.similarExpensesList = document.getElementById('similarExpensesList');
+        this.stateNameInput = document.getElementById('stateNameInput');
+        this.saveStateBtn = document.getElementById('saveStateBtn');
+        this.loadStateBtn = document.getElementById('loadStateBtn');
+        this.savedStatesDropdown = document.getElementById('savedStatesDropdown');
+
+        this.dbName = 'ExpenseAnalyzerDB';
+        this.dbVersion = 1;
+        this.db = null;
 
         // Инициализация модулей
         this.tbankParser = new TBankCSVParser();
@@ -54,6 +62,186 @@ class App {
 
         // Привязка событий
         this.bindEvents();
+
+        // Инициализация IndexedDB
+        this.initDB().then(() => {
+            this.updateSavedStatesDropdown();
+        });
+    }
+
+    async initDB() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, this.dbVersion);
+
+            request.onerror = () => reject(request.error);
+            request.onsuccess = () => {
+                this.db = request.result;
+                resolve();
+            };
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains('states')) {
+                    db.createObjectStore('states', { keyPath: 'name' });
+                }
+            };
+        });
+    }
+
+    async saveState(name) {
+        if (!name || !name.trim()) {
+            alert('Введите имя для сохранения');
+            return false;
+        }
+
+        const state = {
+            name: name.trim(),
+            timestamp: Date.now(),
+            currentMode: this.currentMode,
+            searchTerm: this.searchTerm,
+            selectedMonth: this.selectedMonth,
+            similarityThreshold: this.similarityThreshold,
+            transactions: this.dataManager.transactions,
+            enabledCategories: Array.from(this.categoryManager.getEnabled())
+        };
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['states'], 'readwrite');
+            const store = transaction.objectStore('states');
+            const request = store.put(state);
+
+            request.onsuccess = () => {
+                this.updateSavedStatesDropdown();
+                resolve(true);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async loadState(name) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['states'], 'readonly');
+            const store = transaction.objectStore('states');
+            const request = store.get(name);
+
+            request.onsuccess = () => {
+                const state = request.result;
+                if (!state) {
+                    alert('Сохранение не найдено');
+                    resolve(false);
+                    return;
+                }
+
+                this.currentMode = state.currentMode || 'day';
+                this.searchTerm = state.searchTerm || '';
+                this.selectedMonth = state.selectedMonth || null;
+                this.similarityThreshold = state.similarityThreshold || 0.7;
+
+                if (state.transactions && state.transactions.length > 0) {
+                    this.dataManager.loadTransactions(state.transactions);
+                    const categories = this.dataManager.getCategories();
+                    this.categoryManager.init(categories);
+                    
+                    if (state.enabledCategories) {
+                        this.categoryManager.enabled = new Set(state.enabledCategories);
+                    }
+                }
+
+                this.applyLoadedState();
+                resolve(true);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async deleteState(name) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['states'], 'readwrite');
+            const store = transaction.objectStore('states');
+            const request = store.delete(name);
+
+            request.onsuccess = () => {
+                this.updateSavedStatesDropdown();
+                resolve(true);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async getSavedStates() {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(['states'], 'readonly');
+            const store = transaction.objectStore('states');
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const states = request.result.sort((a, b) => b.timestamp - a.timestamp);
+                resolve(states);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    async updateSavedStatesDropdown() {
+        const states = await this.getSavedStates();
+        
+        if (states.length === 0) {
+            this.savedStatesDropdown.hidden = true;
+            return;
+        }
+
+        this.savedStatesDropdown.innerHTML = states.map(state => `
+            <div class="saved-state-item" data-name="${this.escapeHtml(state.name)}">
+                <span class="saved-state-name">${this.escapeHtml(state.name)}</span>
+                <span class="saved-state-date">${new Date(state.timestamp).toLocaleString('ru-RU')}</span>
+                <button class="saved-state-load" data-name="${this.escapeHtml(state.name)}">Загрузить</button>
+                <button class="saved-state-delete" data-name="${this.escapeHtml(state.name)}">✕</button>
+            </div>
+        `).join('');
+
+        this.savedStatesDropdown.querySelectorAll('.saved-state-load').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const name = btn.dataset.name;
+                await this.loadState(name);
+                this.savedStatesDropdown.hidden = true;
+            });
+        });
+
+        this.savedStatesDropdown.querySelectorAll('.saved-state-delete').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const name = btn.dataset.name;
+                if (confirm(`Удалить сохранение "${name}"?`)) {
+                    await this.deleteState(name);
+                }
+            });
+        });
+    }
+
+    applyLoadedState() {
+        this.searchInput.value = this.searchTerm;
+        this.similarityRange.value = this.similarityThreshold * 100;
+        this.similarityValue.textContent = `${Math.round(this.similarityThreshold * 100)}%`;
+
+        this.groupToggle.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === this.currentMode);
+        });
+
+        if (this.dataManager.transactions.length > 0) {
+            this.dropzone.hidden = true;
+            this.main.hidden = false;
+
+            this.renderCategories();
+            this.updateChart();
+            this.updateSummary();
+            this.renderCategoryBreakdown();
+            this.renderSimilarExpenses();
+
+            requestAnimationFrame(() => {
+                this.dragScroller.scrollToEnd();
+            });
+        }
 
         // Callback для клика по месяцу
         this.chartRenderer.onMonthClick = (date) => this.onMonthClick(date);
@@ -91,6 +279,33 @@ class App {
             this.similarityThreshold = e.target.value / 100;
             this.similarityValue.textContent = `${e.target.value}%`;
             this.renderSimilarExpenses();
+        });
+
+        this.saveStateBtn.addEventListener('click', async () => {
+            const name = this.stateNameInput.value;
+            if (await this.saveState(name)) {
+                this.stateNameInput.value = '';
+            }
+        });
+
+        this.loadStateBtn.addEventListener('click', async () => {
+            const isVisible = !this.savedStatesDropdown.hidden;
+            this.savedStatesDropdown.hidden = isVisible;
+            if (!isVisible) {
+                await this.updateSavedStatesDropdown();
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.save-load-controls')) {
+                this.savedStatesDropdown.hidden = true;
+            }
+        });
+
+        this.stateNameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                this.saveStateBtn.click();
+            }
         });
     }
 
