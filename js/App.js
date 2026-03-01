@@ -25,6 +25,10 @@ class App {
         this.totalBalance = document.getElementById('totalBalance');
         this.groupToggle = document.querySelector('.group-toggle');
         this.searchInput = document.getElementById('searchInput');
+        this.incomeBreakdown = document.getElementById('incomeBreakdown');
+        this.expenseBreakdown = document.getElementById('expenseBreakdown');
+        this.incomeBreakdownTotal = document.getElementById('incomeBreakdownTotal');
+        this.expenseBreakdownTotal = document.getElementById('expenseBreakdownTotal');
 
         // Инициализация модулей
         this.tbankParser = new TBankCSVParser();
@@ -75,6 +79,7 @@ class App {
             this.renderCategories();
             this.updateChart();
             this.updateSummary();
+            this.renderCategoryBreakdown();
         });
     }
 
@@ -135,6 +140,7 @@ class App {
             this.renderCategories();
             this.updateChart();
             this.updateSummary();
+            this.renderCategoryBreakdown();
 
             requestAnimationFrame(() => {
                 this.dragScroller.scrollToEnd();
@@ -304,6 +310,45 @@ class App {
         this.totalIncome.textContent = this.formatMoney(totals.income);
         this.totalExpense.textContent = this.formatMoney(totals.expense);
         this.totalBalance.textContent = this.formatMoney(totals.balance);
+    }
+
+    renderCategoryBreakdown() {
+        const categories = this.dataManager.getCategoriesByGroup();
+        const enabled = this.categoryManager.getEnabled();
+
+        const incomeCategories = categories
+            .filter(c => c.isIncome && this.matchesSearchGroup(c))
+            .sort((a, b) => b.total - a.total);
+
+        const expenseCategories = categories
+            .filter(c => !c.isIncome && this.matchesSearchGroup(c))
+            .sort((a, b) => b.total - a.total);
+
+        this.incomeBreakdown.innerHTML = incomeCategories.map(cat => `
+            <div class="breakdown-item income">
+                <span class="breakdown-name">${this.escapeHtml(cat.displayName)}</span>
+                <span class="breakdown-amount">${this.formatMoney(cat.total)}</span>
+            </div>
+        `).join('');
+
+        this.expenseBreakdown.innerHTML = expenseCategories.map(cat => `
+            <div class="breakdown-item expense">
+                <span class="breakdown-name">${this.escapeHtml(cat.displayName)}</span>
+                <span class="breakdown-amount">${this.formatMoney(cat.total)}</span>
+            </div>
+        `).join('');
+
+        const incomeTotal = incomeCategories.reduce((sum, c) => sum + c.total, 0);
+        const expenseTotal = expenseCategories.reduce((sum, c) => sum + c.total, 0);
+
+        this.incomeBreakdownTotal.textContent = this.formatMoney(incomeTotal);
+        this.expenseBreakdownTotal.textContent = this.formatMoney(expenseTotal);
+    }
+
+    matchesSearchGroup(category) {
+        if (!this.searchTerm) return true;
+        const name = (category.displayName || category.name || '').toLowerCase();
+        return name.includes(this.searchTerm);
     }
 
     formatMoney(amount) {

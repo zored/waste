@@ -500,6 +500,108 @@ body {
     color: var(--accent);
 }
 
+/* Category Breakdown */
+.category-breakdown-section {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+}
+
+.category-breakdown-section h2 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 24px;
+    color: var(--text-primary);
+}
+
+.breakdown-group {
+    margin-bottom: 24px;
+}
+
+.breakdown-group:last-child {
+    margin-bottom: 0;
+}
+
+.breakdown-title {
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.breakdown-title.income {
+    color: var(--income);
+}
+
+.breakdown-title.expense {
+    color: var(--expense);
+}
+
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
+}
+
+.breakdown-item.income {
+    border-left: 3px solid var(--income);
+}
+
+.breakdown-item.expense {
+    border-left: 3px solid var(--expense);
+}
+
+.breakdown-name {
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.breakdown-amount {
+    font-family: var(--font-mono);
+    font-size: 13px;
+}
+
+.breakdown-item.income .breakdown-amount {
+    color: var(--income);
+}
+
+.breakdown-item.expense .breakdown-amount {
+    color: var(--expense);
+}
+
+.breakdown-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+}
+
+.breakdown-total span:first-child {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.breakdown-total span:last-child {
+    font-family: var(--font-mono);
+    font-size: 15px;
+}
+
 /* Empty state */
 .empty-state {
     text-align: center;

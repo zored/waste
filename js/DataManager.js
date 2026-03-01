@@ -194,4 +194,30 @@ export class DataManager {
 
         return { income, expense, balance: income - expense };
     }
+
+    getCategoriesByGroup() {
+        const groups = new Map();
+
+        for (const t of this.transactions) {
+            const typeKey = t.isIncome ? 'inc' : 'exp';
+            const key = `${t.category}|${typeKey}`;
+
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    name: key,
+                    displayName: t.category,
+                    category: t.category,
+                    isIncome: t.isIncome,
+                    total: 0,
+                    count: 0
+                });
+            }
+
+            const group = groups.get(key);
+            group.total += Math.abs(t.amount);
+            group.count++;
+        }
+
+        return Array.from(groups.values()).sort((a, b) => b.total - a.total);
+    }
 }
