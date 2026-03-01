@@ -29,6 +29,9 @@ class App {
         this.expenseBreakdown = document.getElementById('expenseBreakdown');
         this.incomeBreakdownTotal = document.getElementById('incomeBreakdownTotal');
         this.expenseBreakdownTotal = document.getElementById('expenseBreakdownTotal');
+        this.similarityRange = document.getElementById('similarityRange');
+        this.similarityValue = document.getElementById('similarityValue');
+        this.similarExpensesList = document.getElementById('similarExpensesList');
 
         // Инициализация модулей
         this.tbankParser = new TBankCSVParser();
@@ -47,6 +50,7 @@ class App {
         this.currentMode = 'day';
         this.searchTerm = '';
         this.selectedMonth = null;
+        this.similarityThreshold = 0.7;
 
         // Привязка событий
         this.bindEvents();
@@ -80,6 +84,13 @@ class App {
             this.updateChart();
             this.updateSummary();
             this.renderCategoryBreakdown();
+            this.renderSimilarExpenses();
+        });
+
+        this.similarityRange.addEventListener('input', (e) => {
+            this.similarityThreshold = e.target.value / 100;
+            this.similarityValue.textContent = `${e.target.value}%`;
+            this.renderSimilarExpenses();
         });
     }
 
@@ -141,6 +152,7 @@ class App {
             this.updateChart();
             this.updateSummary();
             this.renderCategoryBreakdown();
+            this.renderSimilarExpenses();
 
             requestAnimationFrame(() => {
                 this.dragScroller.scrollToEnd();
@@ -213,6 +225,8 @@ class App {
                 this.categoryManager.toggle(chip.dataset.category);
                 chip.classList.toggle('disabled');
                 this.updateSummary();
+                this.renderCategoryBreakdown();
+                this.renderSimilarExpenses();
             });
         });
 
@@ -221,6 +235,8 @@ class App {
                 this.categoryManager.toggle(chip.dataset.category);
                 chip.classList.toggle('disabled');
                 this.updateSummary();
+                this.renderCategoryBreakdown();
+                this.renderSimilarExpenses();
             });
         });
     }
@@ -313,15 +329,50 @@ class App {
     }
 
     renderCategoryBreakdown() {
-        const categories = this.dataManager.getCategoriesByGroup();
         const enabled = this.categoryManager.getEnabled();
+        
+        const categoryTotals = new Map();
+        
+        for (const t of this.dataManager.transactions) {
+            const typeKey = t.isIncome ? 'inc' : 'exp';
+            const catKey = `${t.category}|${t.description}|${typeKey}`;
+            
+            if (!enabled.has(catKey)) continue;
+            
+            if (this.searchTerm) {
+                const desc = (t.description || '').toLowerCase();
+                const cat = (t.category || '').toLowerCase();
+                const fullDisplayName = `${cat} — ${desc}`;
+                if (!desc.includes(this.searchTerm) && !cat.includes(this.searchTerm) && !fullDisplayName.includes(this.searchTerm)) {
+                    continue;
+                }
+            }
+            
+            const groupKey = `${t.category}|${typeKey}`;
+            if (!categoryTotals.has(groupKey)) {
+                categoryTotals.set(groupKey, {
+                    name: groupKey,
+                    displayName: t.category,
+                    category: t.category,
+                    isIncome: t.isIncome,
+                    total: 0,
+                    count: 0
+                });
+            }
+            
+            const group = categoryTotals.get(groupKey);
+            group.total += Math.abs(t.amount);
+            group.count++;
+        }
+
+        const categories = Array.from(categoryTotals.values());
 
         const incomeCategories = categories
-            .filter(c => c.isIncome && this.matchesSearchGroup(c))
+            .filter(c => c.isIncome)
             .sort((a, b) => b.total - a.total);
 
         const expenseCategories = categories
-            .filter(c => !c.isIncome && this.matchesSearchGroup(c))
+            .filter(c => !c.isIncome)
             .sort((a, b) => b.total - a.total);
 
         this.incomeBreakdown.innerHTML = incomeCategories.map(cat => `
@@ -345,18 +396,141 @@ class App {
         this.expenseBreakdownTotal.textContent = this.formatMoney(expenseTotal);
     }
 
-    matchesSearchGroup(category) {
-        if (!this.searchTerm) return true;
-        const name = (category.displayName || category.name || '').toLowerCase();
-        return name.includes(this.searchTerm);
-    }
-
     formatMoney(amount) {
         const formatted = Math.abs(amount).toLocaleString('ru-RU', {
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         });
         return `${amount < 0 ? '-' : ''}${formatted} ₽`;
+    }
+
+    renderSimilarExpenses() {
+        const groups = this.groupExpensesBySimilarity();
+        
+        const sortedGroups = Object.values(groups).sort((a, b) => b.total - a.total);
+
+        this.similarExpensesList.innerHTML = sortedGroups.map(group => `
+            <div class="similar-group">
+                <div class="similar-group-header">
+                    <span class="similar-group-title">
+                        ${this.escapeHtml(group.representative)}
+                        <span class="similar-group-count">${group.items.length}</span>
+                    </span>
+                    <span class="similar-group-total">${this.formatMoney(group.total)}</span>
+                </div>
+                <div class="similar-group-items">
+                    ${group.items.map(item => `
+                        <div class="similar-item">
+                            <span class="similar-item-name">${this.escapeHtml(item.description)}</span>
+                            <span class="similar-item-count">${item.count} шт.</span>
+                            <span class="similar-item-amount">${this.formatMoney(item.total)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    groupExpensesBySimilarity() {
+        const enabledCategories = this.getFilteredCategories();
+        
+        const expenseTransactions = this.dataManager.transactions.filter(t => {
+            if (t.isIncome) return false;
+            
+            const typeKey = 'exp';
+            const catKey = `${t.category}|${t.description}|${typeKey}`;
+            if (!enabledCategories.has(catKey)) return false;
+            
+            if (this.searchTerm) {
+                const desc = (t.description || '').toLowerCase();
+                const cat = (t.category || '').toLowerCase();
+                if (!desc.includes(this.searchTerm) && !cat.includes(this.searchTerm)) {
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+        
+        const expenseMap = new Map();
+        for (const t of expenseTransactions) {
+            const key = t.description || t.category;
+            if (!expenseMap.has(key)) {
+                expenseMap.set(key, {
+                    description: key,
+                    category: t.category,
+                    total: 0,
+                    count: 0
+                });
+            }
+            const item = expenseMap.get(key);
+            item.total += Math.abs(t.amount);
+            item.count++;
+        }
+
+        const expenses = Array.from(expenseMap.values());
+        const groups = {};
+        const assigned = new Set();
+
+        for (const expense of expenses) {
+            if (assigned.has(expense.description)) continue;
+
+            const groupKey = expense.description;
+            groups[groupKey] = {
+                representative: expense.description,
+                items: [expense],
+                total: expense.total
+            };
+            assigned.add(expense.description);
+
+            for (const other of expenses) {
+                if (assigned.has(other.description)) continue;
+
+                const similarity = this.calculateSimilarity(
+                    expense.description.toLowerCase(),
+                    other.description.toLowerCase()
+                );
+
+                if (similarity >= this.similarityThreshold) {
+                    groups[groupKey].items.push(other);
+                    groups[groupKey].total += other.total;
+                    assigned.add(other.description);
+                }
+            }
+        }
+
+        return groups;
+    }
+
+    calculateSimilarity(str1, str2) {
+        if (str1 === str2) return 1;
+        if (str1.length === 0 || str2.length === 0) return 0;
+
+        const matrix = [];
+        for (let i = 0; i <= str2.length; i++) {
+            matrix[i] = [i];
+        }
+        for (let j = 0; j <= str1.length; j++) {
+            matrix[0][j] = j;
+        }
+
+        for (let i = 1; i <= str2.length; i++) {
+            for (let j = 1; j <= str1.length; j++) {
+                if (str2[i - 1] === str1[j - 1]) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+
+        const distance = matrix[str2.length][str1.length];
+        const maxLength = Math.max(str1.length, str2.length);
+        return 1 - distance / maxLength;
     }
 }
 
