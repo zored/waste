@@ -11,7 +11,6 @@ const DATE_RE = /^(\d{2})\.(\d{2})\.(\d{4})$/;
 const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/;
 const AMOUNT_RE = /^[+-]?[\d\u00a0 ]+,\d{2}$/;
 const CURRENCY_RE = /^[₽$€]$|^(?:RUB|USD|EUR)$/;
-const SKIP_RE = /остаток|баланс|итого|период|выписка|счёт|дата|операц|категори/i;
 
 export class SberbankPDFParser {
     async parse(file) {
@@ -19,7 +18,7 @@ export class SberbankPDFParser {
         pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL;
 
         const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
 
         const lines = await this._extractLines(pdf);
         return this._parseTransactions(lines);
@@ -62,7 +61,7 @@ export class SberbankPDFParser {
             if (last && last.page === item.page && Math.abs(last.y - item.y) <= 3) {
                 last.tokens.push(item.text);
             } else {
-                lines.push({ page: item.page, y: item.y, tokens: [item.text] });
+                lines.push({page: item.page, y: item.y, tokens: [item.text]});
             }
         }
 
@@ -78,9 +77,9 @@ export class SberbankPDFParser {
         let current = null;
 
         for (const line of lines) {
-            if (line.tokens.some(t => DATE_RE.test(t))) {
+            if (line.tokens.some(t => TIME_RE.test(t))) {
                 if (current) blocks.push(current);
-                current = { tokens: [], lines: [] };
+                current = {tokens: [], lines: []};
             }
             if (current) {
                 current.tokens.push(...line.tokens);
@@ -137,12 +136,8 @@ export class SberbankPDFParser {
         });
 
         const fullText = metaTokens.join(' ').trim();
-        if (SKIP_RE.test(fullText)) return null;
 
-        let category = 'Без категории';
-        if (metaTokens.length >= 2) {
-            category = metaTokens[metaTokens.length - 1];
-        }
+        const category = metaTokens[1] || 'Без категории';
 
         let description = '';
         let cardNumber = '';
@@ -168,6 +163,11 @@ export class SberbankPDFParser {
         if (!description) {
             description = metaTokens.slice(0, -1).join(' ') || fullText;
         }
+
+        // remove date:
+        description = description.replace(/\d{2}\.\d{2}\.\d{4}/, '').trim();
+        // remove everything after "Операция по":
+        description = description.split(' Операция по')[0].trim();
 
         return {
             operationDate: date,
