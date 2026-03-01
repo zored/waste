@@ -42,9 +42,13 @@ class App {
         // Состояние
         this.currentMode = 'day';
         this.searchTerm = '';
+        this.selectedMonth = null;
 
         // Привязка событий
         this.bindEvents();
+
+        // Callback для клика по месяцу
+        this.chartRenderer.onMonthClick = (date) => this.onMonthClick(date);
     }
 
     bindEvents() {
@@ -167,7 +171,16 @@ class App {
             btn.classList.toggle('active', btn.dataset.mode === mode);
         });
 
+        if (mode === 'month') {
+            this.selectedMonth = null;
+        }
+
         this.updateChart();
+    }
+
+    onMonthClick(date) {
+        this.selectedMonth = date;
+        this.setMode('day');
     }
 
     renderCategories() {
@@ -254,6 +267,31 @@ class App {
         }
 
         this.chartRenderer.render(data, this.currentMode);
+
+        if (this.currentMode === 'day' && this.selectedMonth) {
+            requestAnimationFrame(() => {
+                this.scrollToMonth(this.selectedMonth);
+            });
+        }
+    }
+
+    scrollToMonth(date) {
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const monthNames = ['янв', 'фев', 'мар', 'апр', 'май', 'июн',
+            'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+        const targetLabel = `${monthNames[month]}`;
+
+        const labels = this.chartContainer.querySelectorAll('.bar-label');
+        for (const label of labels) {
+            if (label.textContent.includes(targetLabel)) {
+                const wrapper = label.closest('.bar-wrapper');
+                if (wrapper) {
+                    wrapper.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+                    break;
+                }
+            }
+        }
     }
 
     updateSummary() {

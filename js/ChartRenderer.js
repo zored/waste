@@ -10,6 +10,7 @@ export class ChartRenderer {
         this.data = [];
         this.maxValue = 0;
         this.BAR_GROUP_HEIGHT = 320;
+        this.onMonthClick = null;
     }
 
     /**
@@ -148,6 +149,12 @@ export class ChartRenderer {
             wrapper.addEventListener('mouseenter', (e) => this.showTooltip(e, item));
             wrapper.addEventListener('mousemove', (e) => this.moveTooltip(e));
             wrapper.addEventListener('mouseleave', () => this.hideTooltip());
+
+            // Обработчик клика для месячного режима
+            if (mode === 'month' && this.onMonthClick) {
+                wrapper.style.cursor = 'pointer';
+                wrapper.addEventListener('click', () => this.onMonthClick(item.date));
+            }
         });
 
         // Мы убрали ручной расчет ширины (contentWidth), так как CSS flex-shrink: 0
