@@ -23,6 +23,7 @@ class App {
         this.totalExpense = document.getElementById('totalExpense');
         this.totalBalance = document.getElementById('totalBalance');
         this.groupToggle = document.querySelector('.group-toggle');
+        this.searchInput = document.getElementById('searchInput');
 
         // Инициализация модулей
         this.parser = new TBankCSVParser();
@@ -38,6 +39,7 @@ class App {
 
         // Состояние
         this.currentMode = 'day';
+        this.searchTerm = '';
 
         // Привязка событий
         this.bindEvents();
@@ -60,6 +62,12 @@ class App {
 
         // Category change callback
         this.categoryManager.onChange = () => this.updateChart();
+
+        // Search input
+        this.searchInput.addEventListener('input', (e) => {
+            this.searchTerm = e.target.value.toLowerCase().trim();
+            this.renderCategories();
+        });
     }
 
     onDragOver(e) {
@@ -133,8 +141,8 @@ class App {
     renderCategories() {
         const categories = this.dataManager.getCategories();
 
-        const incomeList = categories.filter(c => c.isIncome);
-        const expenseList = categories.filter(c => !c.isIncome);
+        const incomeList = categories.filter(c => c.isIncome && this.matchesSearch(c));
+        const expenseList = categories.filter(c => !c.isIncome && this.matchesSearch(c));
 
         this.incomeCategories.innerHTML = incomeList.map(cat =>
             this.createCategoryChip(cat, true)
@@ -160,6 +168,13 @@ class App {
                 this.updateSummary();
             });
         });
+    }
+
+    matchesSearch(category) {
+        if (!this.searchTerm) return true;
+        const name = (category.displayName || category.name || '').toLowerCase();
+        const description = (category.description || '').toLowerCase();
+        return name.includes(this.searchTerm) || description.includes(this.searchTerm);
     }
 
     createCategoryChip(category, isIncome) {

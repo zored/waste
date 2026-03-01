@@ -55,6 +55,33 @@ body {
     letter-spacing: -0.02em;
 }
 
+.search-box {
+    flex: 1;
+    max-width: 400px;
+    margin: 0 24px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 10px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s ease;
+}
+
+.search-input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-input:focus {
+    border-color: var(--accent);
+}
+
 .group-toggle {
     display: flex;
     gap: 2px;
