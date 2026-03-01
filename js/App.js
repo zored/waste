@@ -1,4 +1,5 @@
 import { TBankCSVParser } from './TBankCSVParser.js';
+import { RaifCSVParser } from './RaifCSVParser.js';
 import { SberbankPDFParser } from './SberbankPDFParser.js';
 import { DataManager } from './DataManager.js';
 import { CategoryManager } from './CategoryManager.js';
@@ -26,7 +27,8 @@ class App {
         this.searchInput = document.getElementById('searchInput');
 
         // Инициализация модулей
-        this.parser = new TBankCSVParser();
+        this.tbankParser = new TBankCSVParser();
+        this.raifParser = new RaifCSVParser();
         this.pdfParser = new SberbankPDFParser();
         this.dataManager = new DataManager();
         this.categoryManager = new CategoryManager();
@@ -99,7 +101,14 @@ class App {
 
     async loadFile(file) {
         try {
-            const parser = file.name.endsWith('.pdf') ? this.pdfParser : this.parser;
+            let parser;
+            
+            if (file.name.endsWith('.pdf')) {
+                parser = this.pdfParser;
+            } else {
+                parser = await this.detectCSVParser(file);
+            }
+            
             const transactions = await parser.parse(file);
 
             this.dataManager.loadTransactions(transactions);
@@ -125,6 +134,27 @@ class App {
             console.error('Ошибка загрузки файла:', error);
             alert('Не удалось загрузить файл. Проверьте формат.');
         }
+    }
+
+    async detectCSVParser(file) {
+        const buffer = await file.arrayBuffer();
+        
+        let text;
+        try {
+            const decoder1251 = new TextDecoder('windows-1251');
+            text = decoder1251.decode(buffer);
+        } catch {
+            const decoderUtf8 = new TextDecoder('utf-8');
+            text = decoderUtf8.decode(buffer);
+        }
+        
+        const firstLine = text.split('\n')[0];
+        
+        if (firstLine.includes('Дата ввода')) {
+            return this.raifParser;
+        }
+        
+        return this.tbankParser;
     }
 
     setMode(mode) {
