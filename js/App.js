@@ -1,5 +1,5 @@
 import { TBankCSVParser } from './TBankCSVParser.js';
-import { PDFParser } from './PDFParser.js';
+import { SberbankPDFParser } from './SberbankPDFParser.js';
 import { DataManager } from './DataManager.js';
 import { CategoryManager } from './CategoryManager.js';
 import { ChartRenderer } from './ChartRenderer.js';
@@ -26,7 +26,7 @@ class App {
 
         // Инициализация модулей
         this.parser = new TBankCSVParser();
-        this.pdfParser = new PDFParser();
+        this.pdfParser = new SberbankPDFParser();
         this.dataManager = new DataManager();
         this.categoryManager = new CategoryManager();
         this.chartRenderer = new ChartRenderer(
