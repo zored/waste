@@ -92,53 +92,57 @@ class App {
         e.preventDefault();
         this.dropzone.classList.remove('dragover');
 
-        const file = e.dataTransfer.files[0];
-        if (file && (file.name.endsWith('.csv') || file.name.endsWith('.pdf'))) {
-            this.loadFile(file);
+        const files = Array.from(e.dataTransfer.files).filter(
+            file => file.name.endsWith('.csv') || file.name.endsWith('.pdf')
+        );
+        if (files.length > 0) {
+            this.loadFiles(files);
         }
     }
 
     onFileSelect(e) {
-        const file = e.target.files[0];
-        if (file) {
-            this.loadFile(file);
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            this.loadFiles(files);
         }
     }
 
-    async loadFile(file) {
+    async loadFiles(files) {
         try {
-            let parser;
-            
-            if (file.name.endsWith('.pdf')) {
-                parser = this.pdfParser;
-            } else {
-                parser = await this.detectCSVParser(file);
-            }
-            
-            const transactions = await parser.parse(file);
+            let allTransactions = [];
 
-            this.dataManager.loadTransactions(transactions);
+            for (const file of files) {
+                let parser;
+                
+                if (file.name.endsWith('.pdf')) {
+                    parser = this.pdfParser;
+                } else {
+                    parser = await this.detectCSVParser(file);
+                }
+                
+                const transactions = await parser.parse(file);
+                allTransactions = allTransactions.concat(transactions);
+            }
+
+            this.dataManager.loadTransactions(allTransactions);
 
             const categories = this.dataManager.getCategories();
             this.categoryManager.init(categories);
 
-            // Показываем основной интерфейс
             this.dropzone.hidden = true;
             this.main.hidden = false;
 
-            // Рендерим
             this.renderCategories();
             this.updateChart();
             this.updateSummary();
 
-            // Прокручиваем к концу после рендера
             requestAnimationFrame(() => {
                 this.dragScroller.scrollToEnd();
             });
 
         } catch (error) {
-            console.error('Ошибка загрузки файла:', error);
-            alert('Не удалось загрузить файл. Проверьте формат.');
+            console.error('Ошибка загрузки файлов:', error);
+            alert('Не удалось загрузить файлы. Проверьте формат.');
         }
     }
 
