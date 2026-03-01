@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ расходов</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+    <header class="header">
+        <h1>Анализ расходов</h1>
+        <div class="controls">
+            <div class="group-toggle">
+                <button class="toggle-btn active" data-mode="day">По дням</button>
+                <button class="toggle-btn" data-mode="month">По месяцам</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="dropzone" id="dropzone">
+        <div class="dropzone-content">
+            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+            </svg>
+            <p class="dropzone-text">Перетащите CSV или PDF файл сюда</p>
+            <p class="dropzone-hint">или кликните для выбора файла</p>
+        </div>
+        <input type="file" id="fileInput" accept=".csv,.pdf" hidden>
+    </div>
+
+    <main class="main" id="main" hidden>
+        <section class="chart-section">
+            <div class="chart-container" id="chartContainer">
+                <div class="chart-scroll" id="chartScroll">
+                    <div class="chart" id="chart"></div>
+                </div>
+                <div class="chart-axis-y" id="chartAxisY"></div>
+            </div>
+        </section>
+
+        <section class="categories-section" id="categoriesSection">
+            <div class="category-group">
+                <h3 class="category-group-title">Доходы</h3>
+                <div class="categories-list" id="incomeCategories"></div>
+            </div>
+            <div class="category-group">
+                <h3 class="category-group-title">Расходы</h3>
+                <div class="categories-list" id="expenseCategories"></div>
+            </div>
+        </section>
+
+        <section class="summary-section" id="summarySection">
+            <div class="summary-item income">
+                <span class="summary-label">Общий доход</span>
+                <span class="summary-value" id="totalIncome">0 ₽</span>
+            </div>
+            <div class="summary-item expense">
+                <span class="summary-label">Общий расход</span>
+                <span class="summary-value" id="totalExpense">0 ₽</span>
+            </div>
+            <div class="summary-item balance">
+                <span class="summary-label">Баланс</span>
+                <span class="summary-value" id="totalBalance">0 ₽</span>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script type="module" src="js/App.js"></script>
+</body>
+</html>
