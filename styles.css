@@ -389,6 +389,36 @@ body {
     border-color: currentColor;
 }
 
+.category-chip {
+    position: relative;
+}
+
+.category-tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    white-space: normal;
+    max-width: 350px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    z-index: 100;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.category-chip:hover .category-tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
 .category-name {
     max-width: 200px;
     overflow: hidden;

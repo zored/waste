@@ -166,10 +166,10 @@ class App {
         const enabled = this.categoryManager.isEnabled(category.name);
         return `
             <div class="category-chip ${isIncome ? 'income' : 'expense'} ${enabled ? '' : 'disabled'}" 
-                 data-category="${this.escapeHtml(category.name)}"
-                 title="${this.escapeHtml(category.displayName)}">
+                 data-category="${this.escapeHtml(category.name)}">
                 <span class="category-name">${this.escapeHtml(category.displayName)}</span>
                 <span class="category-amount">${this.formatMoney(category.total)}</span>
+                <div class="category-tooltip">${this.escapeHtml(category.description || category.displayName)}</div>
             </div>
         `;
     }
