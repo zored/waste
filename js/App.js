@@ -69,6 +69,8 @@ class App {
         this.searchInput.addEventListener('input', (e) => {
             this.searchTerm = e.target.value.toLowerCase().trim();
             this.renderCategories();
+            this.updateChart();
+            this.updateSummary();
         });
     }
 
@@ -225,21 +227,37 @@ class App {
         return div.innerHTML;
     }
 
+    getFilteredCategories() {
+        const enabled = this.categoryManager.getEnabled();
+        if (!this.searchTerm) return enabled;
+
+        const allCategories = this.dataManager.getCategories();
+        const filtered = new Set();
+
+        for (const cat of allCategories) {
+            if (enabled.has(cat.name) && this.matchesSearch(cat)) {
+                filtered.add(cat.name);
+            }
+        }
+
+        return filtered;
+    }
+
     updateChart() {
-        const enabledCategories = this.categoryManager.getEnabled();
+        const filteredCategories = this.getFilteredCategories();
 
         let data;
         if (this.currentMode === 'day') {
-            data = this.dataManager.groupByDays(enabledCategories);
+            data = this.dataManager.groupByDays(filteredCategories);
         } else {
-            data = this.dataManager.groupByMonths(enabledCategories);
+            data = this.dataManager.groupByMonths(filteredCategories);
         }
 
         this.chartRenderer.render(data, this.currentMode);
     }
 
     updateSummary() {
-        const totals = this.dataManager.getTotals(this.categoryManager.getEnabled());
+        const totals = this.dataManager.getTotals(this.getFilteredCategories());
 
         this.totalIncome.textContent = this.formatMoney(totals.income);
         this.totalExpense.textContent = this.formatMoney(totals.expense);
